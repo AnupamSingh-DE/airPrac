@@ -5,7 +5,8 @@ from pendulum import datetime, duration
 
 @dag(
     start_date=datetime(2026, 9, 1),
-    schedule='@weekly',   #
+    schedule='@daily',   
+    #
     catchup=True,
     max_active_runs = 1,
     description="This dags process ecommerce data",
