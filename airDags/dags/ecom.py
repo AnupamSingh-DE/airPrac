@@ -7,7 +7,6 @@ from include.datasets import DATASET_COCKTAIL
 @dag(
     start_date=datetime(2026, 9, 1),
     schedule=[DATASET_COCKTAIL],   
-    #
     catchup=False,
     max_active_runs = 1,
     description="This dags process ecommerce data",
