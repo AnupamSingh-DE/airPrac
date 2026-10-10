@@ -1,6 +1,13 @@
 
+import os
+
+import os
+
 from airflow.decorators import task
 from include.datasets import DATASET_COCKTAIL
+from airflow.exceptions import AirflowFailException
+
+
 def _get_cocktail(ti = None):
     import requests
 
@@ -10,8 +17,46 @@ def _get_cocktail(ti = None):
 
     with open(DATASET_COCKTAIL.uri, "wb") as f:
         f.write(response.content)
+
+    print(f"File path: {DATASET_COCKTAIL.uri}")
+    print(f"File exists: {os.path.exists(DATASET_COCKTAIL.uri)}")
+    print(f"File size: {os.path.getsize(DATASET_COCKTAIL.uri)} bytes")
     ti.xcom_push(key="request_size",value = len(response.content))
 
 def _check_size(ti = None):
     size = ti.xcom_pull(key="request_size",task_ids="get_cocktail")
     print(f"Size of the request is {size} bytes")
+    if size <= 0:
+        raise AirflowFailException("Size check failed")
+
+def _validate_cocktail_fields():
+    """Validate that the cocktail JSON data has the expected structure."""
+    import json
+    
+    required_fields = {
+        'drinks': [
+            'idDrink', 'strDrink', 'strDrinkAlternate', 'strTags', 'strVideo',
+            'strCategory', 'strIBA', 'strAlcoholic', 'strGlass', 'strInstructions',
+            'strInstructionsES', 'strInstructionsDE', 'strInstructionsFR',
+            'strInstructionsIT', 'strInstructionsZH-HANS', 'strInstructionsZH-HANT',
+            'strDrinkThumb'
+        ] + [f'strIngredient{i}' for i in range(1, 16)] 
+          + [f'strMeasure{i}' for i in range(1, 16)]
+          + ['strImageSource', 'strImageAttribution', 'strCreativeCommonsConfirmed', 'dateModified']
+    }
+    
+    with open(DATASET_COCKTAIL.uri, 'r') as f:
+        data = json.load(f)
+    
+    if not isinstance(data, dict) or 'drinks' not in data:
+        raise ValueError("JSON must have a 'drinks' array")
+    
+    if not isinstance(data['drinks'], list) or not data['drinks']:
+        raise ValueError("'drinks' must be a non-empty array")
+        
+    drink = data['drinks'][0]
+    missing_fields = [field for field in required_fields['drinks'] 
+                     if field not in drink]
+    
+    if missing_fields:
+        raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
