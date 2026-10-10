@@ -1,9 +1,9 @@
 
-from airflow.decorators import dag
+from airflow.decorators import dag, task_group
 from airflow.operators.python import PythonOperator
 from pendulum import datetime, duration
 from include.datasets import DATASET_COCKTAIL
-from include.tasks import _get_cocktail, _check_size
+from include.tasks import _get_cocktail, _check_size, _validate_cocktail_fields
 from include.extractor.callbacks import _handle_failed_dag_run, _handle_empty_size
 
 
@@ -31,12 +31,23 @@ def extractor():
 
     )
 
-    check_size = PythonOperator(
-        task_id = 'check_size',
-        python_callable = _check_size,
-        on_failure_callback = _handle_empty_size
-    )
+    @task_group
+    def checks():
+        check_size = PythonOperator(
+            task_id = 'check_size',
+            python_callable = _check_size,
+            on_failure_callback = _handle_empty_size
+        )
 
-    get_cocktail >> check_size
+        validate_fields = PythonOperator(
+            task_id = 'validate_fields',
+            python_callable = _validate_cocktail_fields,
+        )
+        # get_cocktail()
+        check_size >> validate_fields
+
+    def store_value(ti = None):
+        ti.xcom_pull(task_ids="checks.validate_fields")
+    get_cocktail >> checks()
 
 extractor()
