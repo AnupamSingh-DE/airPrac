@@ -5,6 +5,7 @@ from pendulum import datetime, duration
 from include.datasets import DATASET_COCKTAIL
 from include.tasks import _get_cocktail, _check_size, _validate_cocktail_fields
 from include.extractor.callbacks import _handle_failed_dag_run, _handle_empty_size
+from airflow.utils.trigger_rule import TriggerRule
 import json 
 
 
@@ -65,10 +66,19 @@ def extractor():
     def non_alcholic_cocktail():
         print("This is a non-alcoholic cocktail.")
 
+    @task(trigger_rule= TriggerRule.ONE_SUCCESS, templates_dict={'the_current_date':'{{ ds }}'})
+    def clean_task(templates_dict):
+        import os
+        if os.path.exists(DATASET_COCKTAIL.uri):
+            os.remove(DATASET_COCKTAIL.uri)
 
+        else:
+            print(f"The file {DATASET_COCKTAIL.uri} does not exist.")
+
+        print(f"Cleaned data for {templates_dict['the_current_date']}")
 
     def store_value(ti = None):
         ti.xcom_pull(task_ids="checks.validate_fields")
-    get_cocktail >> checks() >> branch_cocktail_type() >> [alcholic_cocktail(), non_alcholic_cocktail()] 
+    get_cocktail >> checks() >> branch_cocktail_type() >> [alcholic_cocktail(), non_alcholic_cocktail()] >> clean_task()
 
 extractor()
