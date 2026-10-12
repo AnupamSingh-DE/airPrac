@@ -66,7 +66,7 @@ def extractor():
     def non_alcholic_cocktail():
         print("This is a non-alcoholic cocktail.")
 
-    @task(trigger_rule= TriggerRule.ONE_SUCCESS, templates_dict={'the_current_date':'{{ ds }}'})
+    @task(trigger_rule= TriggerRule.ONE_SUCCESS, templates_dict={'the_current_date':'{{ ds }}', 'my_api': '{{ var.value.api }}'})
     def clean_task(templates_dict):
         import os
         if os.path.exists(DATASET_COCKTAIL.uri):
@@ -76,6 +76,7 @@ def extractor():
             print(f"The file {DATASET_COCKTAIL.uri} does not exist.")
 
         print(f"Cleaned data for {templates_dict['the_current_date']}")
+        print(f"API used: {templates_dict['my_api']}")
 
     def store_value(ti = None):
         ti.xcom_pull(task_ids="checks.validate_fields")
