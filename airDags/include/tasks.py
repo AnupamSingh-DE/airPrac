@@ -1,17 +1,17 @@
 
 import os
 
-import os
-
 from airflow.decorators import task
 from include.datasets import DATASET_COCKTAIL
 from airflow.exceptions import AirflowFailException
+from airflow.models import Variable
+
+api = Variable.get("api")
 
 
 def _get_cocktail(ti = None):
     import requests
 
-    api = "https://www.thecocktaildb.com/api/json/v1/1/random.php"
     response = requests.get(api)
 
 
